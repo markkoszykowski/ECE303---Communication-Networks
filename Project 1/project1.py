@@ -1,6 +1,6 @@
-import argparse
-import socket
 import sys
+import socket
+import argparse
 
 
 def portScan(hostname, ports):
