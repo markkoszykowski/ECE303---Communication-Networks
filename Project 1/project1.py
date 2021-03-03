@@ -3,7 +3,7 @@ import socket
 import argparse
 
 
-# usage: py project1.py hostname [-p m:n]
+# usage: py project1.py hostname [-p m:n] [-h]
 
 def portScan(hostname, ports):
     print(hostname)
@@ -30,6 +30,6 @@ if __name__ == "__main__":
             sys.exit("Input range should be ascending, or equal to scan a single port")
         ports = range(begin, end + 1)
     except:
-        sys.exit("Improper input format\nusage: py project1.py hostname [-p m:n]")
+        sys.exit("Improper input format\nusage: py project1.py hostname [-p m:n] [-h]")
 
     portScan(args.hostname, ports)
