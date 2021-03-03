@@ -3,6 +3,8 @@ import socket
 import argparse
 
 
+# usage: py project1.py hostname [-p m:n]
+
 def portScan(hostname, ports):
     print(hostname)
     for port in ports:
