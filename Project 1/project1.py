@@ -7,36 +7,35 @@ from concurrent.futures import ThreadPoolExecutor
 # usage: py project1.py hostname [-p m:n] [-h]
 
 
-services = {
-    20: "FTP Data Transfer",
-    21: "FTP Command Control",
-    22: "SSH",
-    23: "Telnet",
-    25: "SMTP",
-    53: "DNS",
-    80: "HTTP",
-    110: "POP3",
-    119: "NNTP",
-    123: "NTP",
-    143: "IMAP",
-    161: "SNMP",
-    194: "IRC",
-    443: "HTTPS"
+OS = {
+    (64, 5840): "Linux (kernel 2.4 and 2.6)",
+    (64, 5720): "Google's customized Linux",
+    (64, 65535): "FreeBSD",
+    (128, 65535): "Windows XP",
+    (128, 8192): "Windows 7, Vista and Server 2008",
+    (255, 4128): "Cisco Router (iOS 12.4)"
 }
 
 
 def scanPort(args):
     (hostname, port) = args
+    hostname = socket.gethostbyname(hostname)
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(2)
-        s.connect_ex((hostname, port))
-        if s == 0:
-            if port in services.keys():
-                print(F"Port {port} - {services.get(port)} - Open")
-            else:
-                print(F"Port {port} - Open")
-            s.close()
+        s.settimeout(1)
+        connect = s.connect_ex((hostname, port))
+        if connect == 0:
+            ttl = s.getsockopt(socket.IPPROTO_IP, socket.IP_TTL)
+            winSize = s.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF) - 1
+            try:
+                print(F"Port {port} - {OS.get((ttl, winSize))}", end=" ")
+            except:
+                print(F"Port {port} - Unknown OS", end=" ")
+            try:
+                print(F"- {socket.getservbyport(port)} - Open")
+            except:
+                print(F"- Open")
+        s.close()
     except socket.gaierror:
         sys.exit("Hostname could not be resolved")
     except socket.error:
