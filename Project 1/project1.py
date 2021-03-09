@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 # usage: py project1.py hostname [-p m:n] [-h]
 
 
+# https://www.netresec.com/?page=Blog&month=2011-11&post=Passive-OS-Fingerprinting
 OS = {
     (64, 5840): "Linux (kernel 2.4 and 2.6)",
     (64, 5720): "Google's customized Linux",
@@ -19,7 +20,6 @@ OS = {
 
 def scanPort(args):
     (hostname, port) = args
-    hostname = socket.gethostbyname(hostname)
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
@@ -27,9 +27,10 @@ def scanPort(args):
         if connect == 0:
             ttl = s.getsockopt(socket.IPPROTO_IP, socket.IP_TTL)
             winSize = s.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF) - 1
-            try:
+            print((ttl, winSize))
+            if OS.get((ttl, winSize)) is not None:
                 print(F"Port {port} - {OS.get((ttl, winSize))}", end=" ")
-            except:
+            else:
                 print(F"Port {port} - Unknown OS", end=" ")
             try:
                 print(F"- {socket.getservbyport(port)} - Open")
