@@ -27,7 +27,6 @@ def scanPort(args):
         if connect == 0:
             ttl = s.getsockopt(socket.IPPROTO_IP, socket.IP_TTL)
             winSize = s.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF) - 1
-            print((ttl, winSize))
             if OS.get((ttl, winSize)) is not None:
                 print(F"Port {port} - {OS.get((ttl, winSize))}", end=" ")
             else:
