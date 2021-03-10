@@ -26,7 +26,8 @@ def scanPort(args):
         connect = s.connect_ex((hostname, port))
         if connect == 0:
             ttl = s.getsockopt(socket.IPPROTO_IP, socket.IP_TTL)
-            winSize = s.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF) - 1
+            # https://stackoverflow.com/questions/9615321/is-the-tcp-window-size-relevant-to-the-snd-buf-or-rcv-buf-of-the-tcp-socket
+            winSize = s.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
             if OS.get((ttl, winSize)) is not None:
                 print(F"Port {port} - {OS.get((ttl, winSize))}", end=" ")
             else:
