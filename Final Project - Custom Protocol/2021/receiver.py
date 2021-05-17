@@ -75,7 +75,7 @@ class OurReceiver(BogoReceiver):
                 # bring down timeout for received packet
                 if self.timeout > 0.1:
                     duplicates = 0
-                    self.timeout = self.timeout - 0.1
+                    self.timeout -= 0.1
                     self.simulator.rcvr_socket.settimeout(self.timeout)
                 ack_number = 0
                 # verify checksum -> store previous ack number & write to output
