@@ -82,7 +82,7 @@ class OurSender(BogoSender):
         self.sequence_number = (self.sequence_number + self.MSS) % MAX_SEQUENCE_NUMBER
         return self.sequence_number
 
-    # divide whole data into segments
+    # divide whole data into segments of size "max_seqment_size/MSS"
     def segment_data(self, data):
         for i in range(int(math.ceil(len(data) / float(self.MSS)))):
             yield data[self.partition_start:self.partition_end]
@@ -92,14 +92,16 @@ class OurSender(BogoSender):
     def send(self, data):
         self.logger.info(
             "Sending on port: {} and waiting for ACK on port: {}".format(self.outbound_port, self.inbound_port))
+        # redefine bounds for splitting into segments
         self.partition_start = 0
         self.partition_end = self.MSS
+        # set parameters for corruptness
         resend = False
         sent = False
         duplicates = 0
         for segment in self.segment_data(data):
             try:
-                # initial attempt to send
+                # initial attempt to send a segment
                 if not resend:
                     send_array = bytearray([0, self.assign_sequence_number()])
                     send_array += segment
@@ -114,7 +116,7 @@ class OurSender(BogoSender):
                         if ack[1] == self.sequence_number:
                             sent = True
                             self.simulator.u_send(send_array)
-                        # current segment was acknowledged
+                        # current segment was acknowledged -> break
                         elif ack[1] == (self.sequence_number + len(segment)) % MAX_SEQUENCE_NUMBER:
                             duplicates = 0
                             resend = False
@@ -122,10 +124,10 @@ class OurSender(BogoSender):
                                 self.timeout -= 0.1
                                 self.simulator.sndr_socket.settimeout(self.timeout)
                             break
-                        # general error
+                        # general error -> resend
                         else:
                             self.simulator.u_send(send_array)
-                    # package was corrupt
+                    # package was corrupt -> resend
                     else:
                         self.simulator.u_send(send_array)
                         duplicates += 1
@@ -136,7 +138,7 @@ class OurSender(BogoSender):
                             # prevent infinite loop
                             if self.timeout > 10:
                                 sys.exit()
-            # socket timeout -> resend segment
+            # socket timeout -> resend
             except socket.timeout:
                 resend = True
                 self.simulator.u_send(send_array)
@@ -154,5 +156,6 @@ if __name__ == "__main__":
     DATA = bytearray(sys.stdin.read())
     # sndr = BogoSender()
     # sndr.send(DATA)
+    # use OurSender
     sndr = OurSender()
     sndr.send(DATA)

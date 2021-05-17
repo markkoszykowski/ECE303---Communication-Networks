@@ -52,7 +52,7 @@ class OurReceiver(BogoReceiver):
         super(OurReceiver, self).__init__()
         self.timeout = timeout
         self.simulator.rcvr_socket.settimeout(self.timeout)
-        self.recent_ack = bytearray([0, 0, 0])
+        self.recent_ack = bytearray([0, 0])
 
     # check the checksum
     @staticmethod
@@ -66,25 +66,32 @@ class OurReceiver(BogoReceiver):
     def receive(self):
         self.logger.info(
             "Receiving on port: {} and replying with ACK on port: {}".format(self.inbound_port, self.outbound_port))
+        # set parameters for corruptness
         duplicates = 0
         previous_ack_number = -1
         while True:
             try:
                 data = self.simulator.u_receive()
+                # bring down timeout for received packet
                 if self.timeout > 0.1:
                     duplicates = 0
                     self.timeout = self.timeout - 0.1
+                    self.simulator.rcvr_socket.settimeout(self.timeout)
                 ack_number = 0
+                # verify checksum -> store previous ack number & write to output
                 if self.check_checksum(data):
                     ack_number = (data[1] + len(data[2:])) % MAX_SEQUENCE_NUMBER
                     if data[1] == previous_ack_number or previous_ack_number == -1:
                         sys.stdout.write(data[2:])
                         sys.stdout.flush()
                         previous_ack_number = ack_number
+                # checksum is just the ACK number
                 checksum = ack_number
                 send_array = bytearray([checksum, ack_number])
+                # store ACK and send
                 self.recent_ack = send_array
                 self.simulator.u_send(send_array)
+            # socket timeout -> send most recent ACK
             except socket.timeout:
                 self.simulator.u_send(self.recent_ack)
                 duplicates += 1
@@ -100,5 +107,6 @@ if __name__ == "__main__":
     # test out BogoReceiver
     # rcvr = BogoReceiver()
     # rcvr.receive()
+    # use OurReceiver
     rcvr = OurReceiver()
     rcvr.receive()
