@@ -1,4 +1,6 @@
 .idea
+/2021/output.txt
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

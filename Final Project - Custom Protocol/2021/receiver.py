@@ -7,6 +7,9 @@ import utils
 import sys
 import socket
 
+MAX_SEQUENCE_NUMBER = 256
+
+
 class Receiver(object):
 
     def __init__(self, inbound_port=50005, outbound_port=50006, timeout=10, debug_level=logging.INFO):
@@ -30,18 +33,72 @@ class BogoReceiver(Receiver):
         super(BogoReceiver, self).__init__()
 
     def receive(self):
-        self.logger.info("Receiving on port: {} and replying with ACK on port: {}".format(self.inbound_port, self.outbound_port))
+        self.logger.info(
+            "Receiving on port: {} and replying with ACK on port: {}".format(self.inbound_port, self.outbound_port))
         while True:
             try:
-                 data = self.simulator.u_receive()  # receive data
-                 self.logger.info("Got data from socket: {}".format(
-                     data.decode('ascii')))  # note that ASCII will only decode bytes in the range 0-127
-	         sys.stdout.write(data)
-                 self.simulator.u_send(BogoReceiver.ACK_DATA)  # send ACK
+                data = self.simulator.u_receive()  # receive data
+                self.logger.info("Got data from socket: {}".format(
+                    data.decode('ascii')))  # note that ASCII will only decode bytes in the range 0-127
+                sys.stdout.write(data)
+                self.simulator.u_send(BogoReceiver.ACK_DATA)  # send ACK
             except socket.timeout:
                 sys.exit()
 
+
+class OurReceiver(BogoReceiver):
+
+    def __init__(self, timeout=0.1):
+        super(OurReceiver, self).__init__()
+        self.timeout = timeout
+        self.simulator.rcvr_socket.settimeout(self.timeout)
+        self.recent_ack = bytearray([0, 0, 0])
+
+    # check the checksum
+    @staticmethod
+    def check_checksum(data):
+        checksum = ~data[0]
+        for i in xrange(1, len(data)):
+            checksum = checksum ^ data[i]
+
+        return checksum == -1
+
+    def receive(self):
+        self.logger.info(
+            "Receiving on port: {} and replying with ACK on port: {}".format(self.inbound_port, self.outbound_port))
+        duplicates = 0
+        previous_ack_number = -1
+        while True:
+            try:
+                data = self.simulator.u_receive()
+                if self.timeout > 0.1:
+                    duplicates = 0
+                    self.timeout = self.timeout - 0.1
+                ack_number = 0
+                if self.check_checksum(data):
+                    ack_number = (data[1] + len(data[2:])) % MAX_SEQUENCE_NUMBER
+                    if data[1] == previous_ack_number or previous_ack_number == -1:
+                        sys.stdout.write(data[2:])
+                        sys.stdout.flush()
+                        previous_ack_number = ack_number
+                checksum = ack_number
+                send_array = bytearray([checksum, ack_number])
+                self.recent_ack = send_array
+                self.simulator.u_send(send_array)
+            except socket.timeout:
+                self.simulator.u_send(self.recent_ack)
+                duplicates += 1
+                if duplicates == 3:
+                    duplicates = 0
+                    self.timeout *= 2
+                    if self.timeout > 10:
+                        sys.exit()
+                    self.simulator.rcvr_socket.settimeout(self.timeout)
+
+
 if __name__ == "__main__":
     # test out BogoReceiver
-    rcvr = BogoReceiver()
+    # rcvr = BogoReceiver()
+    # rcvr.receive()
+    rcvr = OurReceiver()
     rcvr.receive()
