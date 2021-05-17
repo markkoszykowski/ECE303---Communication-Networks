@@ -48,7 +48,7 @@ class BogoReceiver(Receiver):
 
 class OurReceiver(BogoReceiver):
 
-    def __init__(self, timeout=0.1):
+    def __init__(self, timeout=0.01):
         super(OurReceiver, self).__init__()
         self.timeout = timeout
         self.simulator.rcvr_socket.settimeout(self.timeout)
