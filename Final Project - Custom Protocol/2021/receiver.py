@@ -109,7 +109,6 @@ class OurReceiver(BogoReceiver):
                     if self.timeout > 10:
                         sys.exit()
                     self.simulator.rcvr_socket.settimeout(self.timeout)
-                continue
 
 
 if __name__ == "__main__":
