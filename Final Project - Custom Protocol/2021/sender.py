@@ -77,9 +77,11 @@ class OurSender(BogoSender):
                 # 64 - sequence_number
                 # 65: - data
                 # include previous checksum because in some instances MAX_SEQUENCE_NUMBER packets were dropped in a row
+                # can alternatively include checksum in ACK
                 if not resend:
                     # send a new packet
                     send_array = bytearray([sequence_number])
+                    sequence_number = (sequence_number + 1) % MAX_SEQUENCE_NUMBER
                     send_array += data[start:start+self.MSS]
                     send_array = previous_checksum + send_array
                     checksum = self.checksum(send_array)
@@ -94,11 +96,10 @@ class OurSender(BogoSender):
                 ack = self.simulator.u_receive()
                 # check the checksum of the ACK
                 if self.checksum(ack[32:]) == ack[0:32]:
-                    if ack[32] == (sequence_number + 1) % MAX_SEQUENCE_NUMBER:
+                    if ack[32] == sequence_number:
                         if start >= len(data):
                             break
                         resend = False
-                        sequence_number = (sequence_number + 1) % MAX_SEQUENCE_NUMBER
                     else:
                         resend = True
                 else:

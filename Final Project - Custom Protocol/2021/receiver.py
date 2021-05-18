@@ -83,6 +83,7 @@ class OurReceiver(BogoReceiver):
                     ack_number = (data[64] + 1) % MAX_SEQUENCE_NUMBER
                     # make sure sequence number is correct and that the previous checksum matches
                     # include previous checksum because in some instances MAX_SEQUENCE_NUMBER packets were dropped in a row
+                    # can alternatively include checksum in ACK
                     if (data[64] == previous_ack_number or previous_ack_number == -1) and previous_checksum == data[32:64]:
                         sys.stdout.write(data[65:])
                         sys.stdout.flush()
