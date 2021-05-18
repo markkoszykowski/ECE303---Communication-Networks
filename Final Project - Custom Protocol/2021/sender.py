@@ -49,7 +49,7 @@ class BogoSender(Sender):
 
 class OurSender(BogoSender):
 
-    def __init__(self, max_segment_size=959, timeout=0.05):
+    def __init__(self, max_segment_size=959, timeout=0.01):
         super(OurSender, self).__init__()
         self.MSS = max_segment_size
         self.timeout = timeout
