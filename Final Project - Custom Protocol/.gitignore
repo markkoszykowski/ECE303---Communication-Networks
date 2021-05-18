@@ -1,5 +1,8 @@
 .idea
 /2021/output.txt
+/2021/file_10MB.txt
+/2021/file_25MB.txt
+/2021/file_100MB.txt
 
 
 # Byte-compiled / optimized / DLL files

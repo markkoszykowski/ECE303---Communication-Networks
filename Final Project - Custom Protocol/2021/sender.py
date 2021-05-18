@@ -7,7 +7,6 @@ import channelsimulator
 import utils
 import sys
 
-import random
 import hashlib
 
 MAX_SEQUENCE_NUMBER = 256
@@ -56,47 +55,50 @@ class OurSender(BogoSender):
         self.timeout = timeout
         self.simulator.sndr_socket.settimeout(self.timeout)
         self.simulator.rcvr_socket.settimeout(self.timeout)
-        self.partition_end = self.MSS
-        self.sequence_number = random.randint(0, MAX_SEQUENCE_NUMBER - 1)
 
     # produce a checksum value
     @staticmethod
     def checksum(data):
         return hashlib.md5(data).hexdigest()
 
-    # assign sequence numbers to segments
-    def assign_sequence_number(self):
-        self.sequence_number = (self.sequence_number + self.MSS) % MAX_SEQUENCE_NUMBER
-        return self.sequence_number
-
     def send(self, data):
         self.logger.info(
             "Sending on port: {} and waiting for ACK on port: {}".format(self.outbound_port, self.inbound_port))
+        # initialize parameters
         start = 0
         resend = False
         send_array = None
+        sequence_number = 0
+        previous_checksum = bytearray([0 for _ in range(32)])
         while True:
             try:
                 # 0:32 - md5
-                # 32 - sequence_number
-                # 33: - data
+                # 32:64 - previous md5
+                # 64 - sequence_number
+                # 65: - data
+                # include previous checksum because in some instances MAX_SEQUENCE_NUMBER packets were dropped in a row
                 if not resend:
-                    send_array = bytearray([self.assign_sequence_number()])
+                    # send a new packet
+                    send_array = bytearray([sequence_number])
                     send_array += data[start:start+self.MSS]
-                    send_array = self.checksum(send_array) + send_array
+                    send_array = previous_checksum + send_array
+                    checksum = self.checksum(send_array)
+                    send_array = checksum + send_array
+                    previous_checksum = checksum
                     start += self.MSS
                     self.simulator.u_send(send_array)
                 else:
+                    # send previous packet
                     self.simulator.u_send(send_array)
 
                 ack = self.simulator.u_receive()
+                # check the checksum of the ACK
                 if self.checksum(ack[32:]) == ack[0:32]:
-                    if ack[32] == self.sequence_number:
-                        resend = True
-                    elif ack[32] == (self.sequence_number + len(data[start-self.MSS:start])) % MAX_SEQUENCE_NUMBER:
+                    if ack[32] == (sequence_number + 1) % MAX_SEQUENCE_NUMBER:
                         if start >= len(data):
                             break
                         resend = False
+                        sequence_number = (sequence_number + 1) % MAX_SEQUENCE_NUMBER
                     else:
                         resend = True
                 else:

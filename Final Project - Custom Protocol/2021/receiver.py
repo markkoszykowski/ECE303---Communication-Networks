@@ -56,7 +56,7 @@ class OurReceiver(BogoReceiver):
         self.simulator.sndr_socket.settimeout(self.timeout)
         self.simulator.rcvr_socket.settimeout(self.timeout)
 
-    # check the checksum
+    # produce a checksum value
     @staticmethod
     def checksum(data):
         return hashlib.md5(data).hexdigest()
@@ -64,10 +64,11 @@ class OurReceiver(BogoReceiver):
     def receive(self):
         self.logger.info(
             "Receiving on port: {} and replying with ACK on port: {}".format(self.inbound_port, self.outbound_port))
-        # set parameters for corruptness
+        # initialize parameters
         duplicates = 0
         previous_ack_number = -1
-        recent_ack = bytearray([0, 0])
+        recent_ack = bytearray([0 for _ in range(33)])
+        previous_checksum = bytearray([0 for _ in range(32)])
         while True:
             try:
                 data = self.simulator.u_receive()
@@ -77,19 +78,26 @@ class OurReceiver(BogoReceiver):
                     self.timeout /= 2
                     self.simulator.rcvr_socket.settimeout(self.timeout)
 
-                ack_number = 0
-                # verify checksum -> store previous ack number & write to output
+                # check the checksum of the received packet
                 if self.checksum(data[32:]) == data[0:32]:
-                    ack_number = (data[32] + len(data[33:])) % MAX_SEQUENCE_NUMBER
-                    if data[32] == previous_ack_number or previous_ack_number == -1:
-                        sys.stdout.write(data[33:])
+                    ack_number = (data[64] + 1) % MAX_SEQUENCE_NUMBER
+                    # make sure sequence number is correct and that the previous checksum matches
+                    # include previous checksum because in some instances MAX_SEQUENCE_NUMBER packets were dropped in a row
+                    if (data[64] == previous_ack_number or previous_ack_number == -1) and previous_checksum == data[32:64]:
+                        sys.stdout.write(data[65:])
                         sys.stdout.flush()
+                        # store sequence number and checksum
                         previous_ack_number = ack_number
-                send_array = bytearray([ack_number])
-                send_array = self.checksum(send_array) + send_array
-                # store ACK and send
-                recent_ack = send_array
-                self.simulator.u_send(send_array)
+                        previous_checksum = data[0:32]
+
+                        send_array = bytearray([ack_number])
+                        send_array = self.checksum(send_array) + send_array
+                        # store ACK and send
+                        recent_ack = send_array
+                        self.simulator.u_send(send_array)
+                        continue
+                # corrupt packet -> send most recent packet
+                self.simulator.u_send(recent_ack)
             # socket timeout -> send most recent ACK
             except socket.timeout:
                 self.simulator.u_send(recent_ack)
