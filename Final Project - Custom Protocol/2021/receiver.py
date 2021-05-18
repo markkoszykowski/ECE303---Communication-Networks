@@ -50,7 +50,7 @@ class BogoReceiver(Receiver):
 
 class OurReceiver(BogoReceiver):
 
-    def __init__(self, timeout=0.1):
+    def __init__(self, timeout=0.05):
         super(OurReceiver, self).__init__()
         self.timeout = timeout
         self.simulator.sndr_socket.settimeout(self.timeout)
